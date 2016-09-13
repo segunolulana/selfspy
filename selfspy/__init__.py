@@ -28,6 +28,8 @@ from lockfile import LockFile
 import hashlib
 from Crypto.Cipher import Blowfish
 
+import logging
+
 from selfspy.activity_store import ActivityStore
 from selfspy.password_dialog import get_password
 from selfspy import check_password
@@ -64,6 +66,8 @@ def parse_config():
     parser.add_argument('-r', '--no-repeat', action='store_true', help='Do not store special characters as repeated characters.')
 
     parser.add_argument('--change-password', action="store_true", help='Change the password used to encrypt the keys columns and exit.')
+    parser.add_argument('-v', '--verbose', action="count", help="verbose \
+            level... repeat up to three times.")
 
     return parser.parse_args()
 
@@ -75,6 +79,39 @@ def make_encrypter(password):
         encrypter = Blowfish.new(hashlib.md5(password).digest())
     return encrypter
 
+def set_handler(args, handler):
+    """Set handler log level to the value passed in from argparse
+
+    :args: dictionary of arguments parsed from argparse
+    :handler: handler object to be manipulated
+    """
+    if not args['verbose']:
+        handler.setLevel('ERROR')
+    elif args['verbose'] == 1:
+        handler.setLevel('WARNING')
+    elif args['verbose'] == 2:
+        handler.setLevel('INFO')
+    elif args['verbose'] == 3:
+        handler.setLevel('DEBUG')
+    else:
+        handler.setLevel('NOTSET')
+
+def set_logger(args):
+    """Initiate logger instance and set the logging level
+
+    :args: dictionary of arguments parsed from argparse
+
+    return: instance of logger
+    """
+    logger = logging.getLogger(__name__)
+    logger.setLevel('DEBUG')
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel('DEBUG')
+    console_handler.setFormatter( logging.Formatter('[%(levelname)s](%(name)s): %(message)s') )
+    set_handler(args, console_handler)
+    logger.addHandler(console_handler)
+    return logger
+
 
 def main():
     try:
@@ -82,6 +119,9 @@ def main():
     except EnvironmentError as e:
         print str(e)
         sys.exit(1)
+
+    log = set_logger(args)
+    log.info("Starting Selfspy...")
 
     args['data_dir'] = os.path.expanduser(args['data_dir'])
 

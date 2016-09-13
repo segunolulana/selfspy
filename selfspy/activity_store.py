@@ -15,6 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with Selfspy.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
+log = logging.getLogger(__name__)
+
 import time
 from datetime import datetime
 NOW = datetime.now
@@ -143,6 +146,9 @@ class ActivityStore:
         cur_window = self.session.query(Window).filter_by(title=window_name,
                                                           process_id=cur_process.id).scalar()
         if not cur_window:
+            log.debug(
+                u"Add window(process:{}, window:{})"
+                .format(process_name, window_name))
             cur_window = Window(window_name, cur_process.id)
             self.session.add(cur_window)
 
@@ -190,6 +196,11 @@ class ActivityStore:
             self.filter_many()
 
         if self.key_presses:
+            log.debug(
+                u"Add keys(length:{} process:{}, window:{})"
+                .format(len(self.key_presses), 
+                    self.last_screen_change[0],
+                    self.last_screen_change[1]))
             keys = [press.key for press in self.key_presses]
             timings = [press.time for press in self.key_presses]
             add = lambda count, press: count + (0 if press.is_repeat else 1)
@@ -224,6 +235,8 @@ class ActivityStore:
                   specifier, i.e: SHIFT or SHIFT_L/SHIFT_R, ALT, CTRL
             string is the string representation of the key press
             repeat is True if the current key is a repeat sent by the keyboard """
+        log.debug("keycode:{} state:{} string:{} is_repeat:{}"
+            .format(keycode, state, string, is_repeat))
         now = time.time()
 
         if string in SKIP_MODIFIERS:

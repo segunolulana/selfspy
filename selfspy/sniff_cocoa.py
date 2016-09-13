@@ -15,6 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with Selfspy.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
+log = logging.getLogger(__name__)
+
 from Foundation import NSObject
 from AppKit import NSApplication, NSApp, NSWorkspace
 from Cocoa import (
@@ -29,7 +32,7 @@ from Cocoa import (
     NSShiftKeyMask, NSAlphaShiftKeyMask,
     NSApplicationActivationPolicyProhibited,
     NSWorkspaceDidWakeNotification, NSWorkspaceWillSleepNotification,
-    NSWorkspaceWillPowerOffNotification
+    NSWorkspaceWillPowerOffNotification, NSWorkspaceScreensDidSleepNotification
 )
 from Quartz import (
     CGWindowListCopyWindowInfo,
@@ -39,6 +42,7 @@ from Quartz import (
 )
 from PyObjCTools import AppHelper
 import config as cfg
+import logging
 import signal
 import time
 
@@ -60,6 +64,7 @@ class Sniffer:
 
             SLEEP = u'Sleep'
             POWER_OFF = u'Power Off'
+            SCREEN_SLEEP = u'Screen Sleep'
             NONE = u'\0'
 
             DUMMY_SCREEN_EVENT = [u'System', NONE, 0, 0, 0, 0]
@@ -107,6 +112,12 @@ class Sniffer:
                     NSWorkspaceWillPowerOffNotification,
                     None
                 )
+                notificationCenter.addObserver_selector_name_object_(
+                    self,
+                    self.receiveScreensDidSleep_,
+                    NSWorkspaceScreensDidSleepNotification,
+                    None
+                )
 
             def generateSystemEvent(self, state):
                 """Generate an system event and input a dummy key to ensure the
@@ -126,6 +137,7 @@ class Sniffer:
                 self.key_hook(*self.DUMMY_KEY_EVENT)
 
             def receiveSleepNotification_(self, notification):
+                log.info("Received sleep notification")
                 self.generateSystemEvent(self.SLEEP)
 
             def receiveWakeNotification_(self, notification):
@@ -134,7 +146,16 @@ class Sniffer:
                 pass
 
             def receivePowerOffNotification_(self, notification):
+                """
+                Send system state and attempt to exit elegantly
+                """
+                log.info("Received power off notification")
                 self.generateSystemEvent(self.POWER_OFF)
+                self.applicationShouldTerminate_(notification)
+
+            def receiveScreensDidSleep_(self, notification):
+                log.info("Received screen sleep notification")
+                self.generateSystemEvent(self.SCREEN_SLEEP)
 
             def applicationWillResignActive(self, notification):
                 self.applicationWillTerminate_(notification)
