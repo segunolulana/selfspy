@@ -21,11 +21,14 @@ NOW = datetime.now
 
 import sqlalchemy
 
+PLATFORM='linux'
 import platform
 if platform.system() == 'Darwin':
     from selfspy import sniff_cocoa as sniffer
+    PLATFORM='osx'
 elif platform.system() == 'Windows':
     from selfspy import sniff_win as sniffer
+    PLATFORM='win'
 else:
     from selfspy import sniff_x as sniffer
 
@@ -142,6 +145,10 @@ class ActivityStore:
         if not cur_window:
             cur_window = Window(window_name, cur_process.id)
             self.session.add(cur_window)
+
+        # Add a null key to 'loginwindow' processes so selfspy can add to DB
+        if PLATFORM == 'osx' and process_name == 'loginwindow':
+            self.got_key(0, [], u'\0', False)
 
         if not (self.current_window.proc_id == cur_process.id
                 and self.current_window.win_id == cur_window.id):
