@@ -27,7 +27,9 @@ from Cocoa import (
     NSFlagsChangedMask,
     NSAlternateKeyMask, NSCommandKeyMask, NSControlKeyMask,
     NSShiftKeyMask, NSAlphaShiftKeyMask,
-    NSApplicationActivationPolicyProhibited
+    NSApplicationActivationPolicyProhibited,
+    NSWorkspaceDidWakeNotification, NSWorkspaceWillSleepNotification,
+    NSWorkspaceWillPowerOffNotification
 )
 from Quartz import (
     CGWindowListCopyWindowInfo,
@@ -56,6 +58,13 @@ class Sniffer:
 
         class AppDelegate(NSObject):
 
+            SLEEP = u'Sleep'
+            POWER_OFF = u'Power Off'
+            NONE = u'\0'
+
+            DUMMY_SCREEN_EVENT = [u'System', NONE, 0, 0, 0, 0]
+            DUMMY_KEY_EVENT = [0, [], u'\0', False]
+
             def applicationDidFinishLaunching_(self, notification):
                 mask = (NSKeyDownMask
                         | NSKeyUpMask
@@ -67,6 +76,65 @@ class Sniffer:
                         | NSScrollWheelMask
                         | NSFlagsChangedMask)
                 NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(mask, sc.handler)
+
+                # use reference to outer class (Sniffer)'s attributes
+                self.screen_hook = sc.screen_hook
+                self.key_hook = sc.key_hook
+
+                self.registerNotifications()
+
+            def registerNotifications(self):
+                """Register the app to listen to system state events such as:
+                wake, sleep, and power off
+                """
+                workspace = NSWorkspace.sharedWorkspace()
+                notificationCenter = workspace.notificationCenter()
+                notificationCenter.addObserver_selector_name_object_(
+                    self,
+                    self.receiveSleepNotification_,
+                    NSWorkspaceWillSleepNotification,
+                    None
+                )
+                notificationCenter.addObserver_selector_name_object_(
+                    self,
+                    self.receiveWakeNotification_,
+                    NSWorkspaceDidWakeNotification,
+                    None
+                )
+                notificationCenter.addObserver_selector_name_object_(
+                    self,
+                    self.receivePowerOffNotification_,
+                    NSWorkspaceWillPowerOffNotification,
+                    None
+                )
+
+            def generateSystemEvent(self, state):
+                """Generate an system event and input a dummy key to ensure the
+                event is logged
+
+                :state: unicode string of the System's state
+
+                """
+                if not isinstance(state, unicode):
+                    raise TypeError('Expected {} but received {}'
+                            .format('unicode', type(state)))
+
+                screen_event = self.DUMMY_SCREEN_EVENT
+                screen_event[1] = state
+
+                self.screen_hook(*screen_event)
+                self.key_hook(*self.DUMMY_KEY_EVENT)
+
+            def receiveSleepNotification_(self, notification):
+                self.generateSystemEvent(self.SLEEP)
+
+            def receiveWakeNotification_(self, notification):
+                """ This maybe useful in the future
+                """
+                pass
+
+            def receivePowerOffNotification_(self, notification):
+                self.generateSystemEvent(self.POWER_OFF)
 
             def applicationWillResignActive(self, notification):
                 self.applicationWillTerminate_(notification)
@@ -83,7 +151,7 @@ class Sniffer:
                 # pyobc bridge.
                 if cfg.LOCK.is_locked():
                     cfg.LOCK.release()
-                print("Exiting")
+                print("Releasing lock and exiting")
                 return None
 
         return AppDelegate
@@ -98,6 +166,7 @@ class Sniffer:
         def handler(signal, frame):
             AppHelper.stopEventLoop()
         signal.signal(signal.SIGINT, handler)
+        signal.signal(signal.SIGTERM, handler)
         AppHelper.runEventLoop()
 
     def cancel(self):
