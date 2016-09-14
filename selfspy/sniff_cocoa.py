@@ -55,6 +55,7 @@ class Sniffer:
         self.mouse_button_hook = lambda x: True
         self.mouse_move_hook = lambda x: True
         self.screen_hook = lambda x: True
+        self.stop_current_process = lambda x: True
         self.last_check_windows = time.time()
 
     def createAppDelegate(self):
@@ -83,8 +84,9 @@ class Sniffer:
                 NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(mask, sc.handler)
 
                 # use reference to outer class (Sniffer)'s attributes
-                self.screen_hook = sc.screen_hook
-                self.key_hook = sc.key_hook
+                #  self.screen_hook = sc.screen_hook
+                #  self.key_hook = sc.key_hook
+                self.stop_current_process = sc.stop_current_process
 
                 self.registerNotifications()
 
@@ -126,15 +128,16 @@ class Sniffer:
                 :state: unicode string of the System's state
 
                 """
-                if not isinstance(state, unicode):
-                    raise TypeError('Expected {} but received {}'
-                            .format('unicode', type(state)))
+                #  if not isinstance(state, unicode):
+                    #  raise TypeError('Expected {} but received {}'
+                            #  .format('unicode', type(state)))
 
-                screen_event = self.DUMMY_SCREEN_EVENT
-                screen_event[1] = state
+                #  screen_event = self.DUMMY_SCREEN_EVENT
+                #  screen_event[1] = state
 
-                self.screen_hook(*screen_event)
-                self.key_hook(*self.DUMMY_KEY_EVENT)
+                #  self.screen_hook(*screen_event)
+                #  self.key_hook(*self.DUMMY_KEY_EVENT)
+                self.stop_current_process()
 
             def receiveSleepNotification_(self, notification):
                 log.info("Received sleep notification")

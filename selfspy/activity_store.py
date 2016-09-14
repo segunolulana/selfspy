@@ -101,6 +101,7 @@ class ActivityStore:
         self.sniffer.key_hook = self.got_key
         self.sniffer.mouse_button_hook = self.got_mouse_click
         self.sniffer.mouse_move_hook = self.got_mouse_move
+        self.sniffer.stop_current_process = self.got_stop_current_process
 
         self.sniffer.run()
 
@@ -153,8 +154,8 @@ class ActivityStore:
             self.session.add(cur_window)
 
         # Add a null key to 'loginwindow' processes so selfspy can add to DB
-        if PLATFORM == 'osx' and process_name == 'loginwindow':
-            self.got_key(0, [], u'\0', False)
+        #  if PLATFORM == 'osx' and process_name == 'loginwindow':
+            #  self.got_key(0, [], u'\0', False)
 
         if not (self.current_window.proc_id == cur_process.id
                 and self.current_window.win_id == cur_window.id):
@@ -278,6 +279,18 @@ class ActivityStore:
         """ Queues mouse movements.
             x,y are the new coorinates on moving the mouse"""
         self.mouse_path.append([x, y])
+
+    def got_stop_current_process(self):
+        """ Refreshes last_screen_change variable so the same process can be
+            added after system sleep
+        """
+        if self.last_screen_change:
+            log.info(u"Stop tracking process:{}, window:{}"
+                    .format(
+                        self.last_screen_change[0],
+                        self.last_screen_change[1]))
+        self.last_screen_change = None
+
 
     def close(self):
         """ stops the sniffer and stores the latest keys. To be used on shutdown of program"""
