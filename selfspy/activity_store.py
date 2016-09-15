@@ -101,7 +101,10 @@ class ActivityStore:
         self.sniffer.key_hook = self.got_key
         self.sniffer.mouse_button_hook = self.got_mouse_click
         self.sniffer.mouse_move_hook = self.got_mouse_move
-        self.sniffer.stop_current_process = self.got_stop_current_process
+
+        if PLATFORM == 'osx':
+            # Only tested on osx
+            self.sniffer.start_current_process = self.got_start_current_process
 
         self.sniffer.run()
 
@@ -120,8 +123,6 @@ class ActivityStore:
         args = [process_name, window_name, win_x, win_y, win_width, win_height]
         if self.last_screen_change == args:
             return
-
-        self.last_screen_change = args
 
         cur_process = self.session.query(
             Process
@@ -153,17 +154,19 @@ class ActivityStore:
             cur_window = Window(window_name, cur_process.id)
             self.session.add(cur_window)
 
-        # Add a null key to 'loginwindow' processes so selfspy can add to DB
-        #  if PLATFORM == 'osx' and process_name == 'loginwindow':
-            #  self.got_key(0, [], u'\0', False)
-
         if not (self.current_window.proc_id == cur_process.id
                 and self.current_window.win_id == cur_window.id):
+
             self.trycommit()
             self.store_keys()  # happens before as these keypresses belong to the previous window
             self.current_window.proc_id = cur_process.id
             self.current_window.win_id = cur_window.id
             self.current_window.geo_id = cur_geometry.id
+
+        # allows store_key method to log then update the variable
+        log.debug("Change screen to: {}".format(args))
+        self.last_screen_change = args
+
 
     def filter_many(self):
         specials_in_row = 0
@@ -197,11 +200,14 @@ class ActivityStore:
             self.filter_many()
 
         if self.key_presses:
-            log.debug(
-                u"Add keys(length:{} process:{}, window:{})"
-                .format(len(self.key_presses), 
-                    self.last_screen_change[0],
-                    self.last_screen_change[1]))
+            if self.last_screen_change:
+                log.debug(
+                    u"Storing keys for: {} length: {}"
+                    .format(self.last_screen_change, len(self.key_presses)))
+            else:
+                log.warn("Storing keys to non-existent screen. Okay if first \
+                        screen")
+
             keys = [press.key for press in self.key_presses]
             timings = [press.time for press in self.key_presses]
             add = lambda count, press: count + (0 if press.is_repeat else 1)
@@ -227,6 +233,9 @@ class ActivityStore:
             self.started = NOW()
             self.key_presses = []
             self.last_key_time = time.time()
+        else:
+            log.warn("No keys, skipping...: {}"
+                .format(self.last_screen_change))
 
     def got_key(self, keycode, state, string, is_repeat):
         """ Receives key-presses and queues them for storage.
@@ -280,20 +289,14 @@ class ActivityStore:
             x,y are the new coorinates on moving the mouse"""
         self.mouse_path.append([x, y])
 
-    def got_stop_current_process(self):
-        """ Refreshes last_screen_change variable so the same process can be
-            added after system sleep
-        """
-        if self.last_screen_change:
-            log.info(u"Stop tracking process:{}, window:{}"
-                    .format(
-                        self.last_screen_change[0],
-                        self.last_screen_change[1]))
-        self.last_screen_change = None
-
+    def got_start_current_process(self):
+        """ Reset the timer so tracking begins at the current time instead of
+        the time of the last store_keys method call"""
+        self.started = NOW()
 
     def close(self):
         """ stops the sniffer and stores the latest keys. To be used on shutdown of program"""
+        log.info("Shutting down Selfspy")
         self.sniffer.cancel()
         self.store_keys()
 

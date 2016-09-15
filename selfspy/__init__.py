@@ -79,22 +79,21 @@ def make_encrypter(password):
         encrypter = Blowfish.new(hashlib.md5(password).digest())
     return encrypter
 
-def set_handler(args, handler):
-    """Set handler log level to the value passed in from argparse
+def set_level(args):
+    """Set log level to the value passed in from argparse
 
     :args: dictionary of arguments parsed from argparse
-    :handler: handler object to be manipulated
     """
     if not args['verbose']:
-        handler.setLevel('ERROR')
+        return logging.DEBUG
     elif args['verbose'] == 1:
-        handler.setLevel('WARNING')
+        return logging.WARNING
     elif args['verbose'] == 2:
-        handler.setLevel('INFO')
+        return logging.INFO
     elif args['verbose'] == 3:
-        handler.setLevel('DEBUG')
+        return logging.DEBUG
     else:
-        handler.setLevel('NOTSET')
+        return logging.NOTSET
 
 def set_logger(args):
     """Initiate logger instance and set the logging level
@@ -103,13 +102,9 @@ def set_logger(args):
 
     return: instance of logger
     """
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
+        level=set_level(args))
     logger = logging.getLogger(__name__)
-    logger.setLevel('DEBUG')
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel('DEBUG')
-    console_handler.setFormatter( logging.Formatter('[%(levelname)s](%(name)s): %(message)s') )
-    set_handler(args, console_handler)
-    logger.addHandler(console_handler)
     return logger
 
 

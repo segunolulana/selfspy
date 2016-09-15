@@ -32,7 +32,8 @@ from Cocoa import (
     NSShiftKeyMask, NSAlphaShiftKeyMask,
     NSApplicationActivationPolicyProhibited,
     NSWorkspaceDidWakeNotification, NSWorkspaceWillSleepNotification,
-    NSWorkspaceWillPowerOffNotification, NSWorkspaceScreensDidSleepNotification
+    NSWorkspaceWillPowerOffNotification, NSWorkspaceScreensDidSleepNotification,
+    NSWorkspaceScreensDidWakeNotification
 )
 from Quartz import (
     CGWindowListCopyWindowInfo,
@@ -55,21 +56,13 @@ class Sniffer:
         self.mouse_button_hook = lambda x: True
         self.mouse_move_hook = lambda x: True
         self.screen_hook = lambda x: True
-        self.stop_current_process = lambda x: True
+        self.start_current_process = lambda x: True
         self.last_check_windows = time.time()
 
     def createAppDelegate(self):
         sc = self
 
         class AppDelegate(NSObject):
-
-            SLEEP = u'Sleep'
-            POWER_OFF = u'Power Off'
-            SCREEN_SLEEP = u'Screen Sleep'
-            NONE = u'\0'
-
-            DUMMY_SCREEN_EVENT = [u'System', NONE, 0, 0, 0, 0]
-            DUMMY_KEY_EVENT = [0, [], u'\0', False]
 
             def applicationDidFinishLaunching_(self, notification):
                 mask = (NSKeyDownMask
@@ -84,16 +77,13 @@ class Sniffer:
                 NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(mask, sc.handler)
 
                 # use reference to outer class (Sniffer)'s attributes
-                #  self.screen_hook = sc.screen_hook
-                #  self.key_hook = sc.key_hook
-                self.stop_current_process = sc.stop_current_process
+                self.start_current_process = sc.start_current_process
 
                 self.registerNotifications()
 
             def registerNotifications(self):
                 """Register the app to listen to system state events such as:
-                wake, sleep, and power off
-                """
+                wake, sleep, and power off"""
                 workspace = NSWorkspace.sharedWorkspace()
                 notificationCenter = workspace.notificationCenter()
                 notificationCenter.addObserver_selector_name_object_(
@@ -120,45 +110,35 @@ class Sniffer:
                     NSWorkspaceScreensDidSleepNotification,
                     None
                 )
+                notificationCenter.addObserver_selector_name_object_(
+                    self,
+                    self.receiveScreensDidWake_,
+                    NSWorkspaceScreensDidWakeNotification,
+                    None
+                )
 
-            def generateSystemEvent(self, state):
-                """Generate an system event and input a dummy key to ensure the
-                event is logged
-
-                :state: unicode string of the System's state
-
-                """
-                #  if not isinstance(state, unicode):
-                    #  raise TypeError('Expected {} but received {}'
-                            #  .format('unicode', type(state)))
-
-                #  screen_event = self.DUMMY_SCREEN_EVENT
-                #  screen_event[1] = state
-
-                #  self.screen_hook(*screen_event)
-                #  self.key_hook(*self.DUMMY_KEY_EVENT)
-                self.stop_current_process()
-
+            """
+            receive*(self, notification) methods are called when a system
+            state occurs. They may be useful in the future but for now they are
+            there for logging sake.
+            """
             def receiveSleepNotification_(self, notification):
-                log.info("Received sleep notification")
-                self.generateSystemEvent(self.SLEEP)
+                log.info("Received sleep")
 
             def receiveWakeNotification_(self, notification):
-                """ This maybe useful in the future
-                """
-                pass
+                log.info("Received wake")
+                self.start_current_process()
 
             def receivePowerOffNotification_(self, notification):
-                """
-                Send system state and attempt to exit elegantly
-                """
-                log.info("Received power off notification")
-                self.generateSystemEvent(self.POWER_OFF)
+                log.info("Received power off")
                 self.applicationShouldTerminate_(notification)
 
             def receiveScreensDidSleep_(self, notification):
-                log.info("Received screen sleep notification")
-                self.generateSystemEvent(self.SCREEN_SLEEP)
+                log.info("Received screen sleep")
+
+            def receiveScreensDidWake_(self, notification):
+                log.info("Received screen wake")
+                self.start_current_process()
 
             def applicationWillResignActive(self, notification):
                 self.applicationWillTerminate_(notification)
