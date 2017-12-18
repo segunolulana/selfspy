@@ -92,7 +92,7 @@ https://github.com/gurgeh/selfspy/issues
 General discussion here:
 http://ost.io/gurgeh/selfspy
 
-### Running Selfspy
+## Running Selfspy
 You run selfspy with `selfspy`. You should probably start with `selfspy --help` to get to know the command line arguments. As of this writing, it should look like this:
 
 ```
@@ -140,11 +140,11 @@ Unless you use the --no-text flag, selfspy will store everything you type in two
 
 Normally you would like Selfspy to start automatically when you launch X. How to do this depends on your system, but it will normally mean editing *~/.xinitrc* or *~/.xsession*. If you run KDE, *~/.kde/Autostart*, is a good place to put startup scripts. When run, Selfspy will immediately spawn a daemon and exit.
 
-#### Running on login in OS X
+### Running on login in OS X
 If you want selfspy to start automatically on login you need to copy the [com.github.gurgeh.selfspy.plist](https://raw.githubusercontent.com/gurgeh/selfspy/master/com.github.gurgeh.selfspy.plist)
 file to `~/Library/LaunchAgents/`.
 
-### Example Statistics
+## Example Statistics
 *"OK, so now all this data will be stored, but what can I use it for?"*
 
 While you can access the Sqlite tables directly or, if you like Python, import `models.py` from the Selfspy directory and use those SqlAlchemy classes, the standard way to query your data is through `selfstats`.
@@ -222,7 +222,7 @@ List all buffers in Emacs that contained "cpp", from the first this month and fo
 
 Selfstats is a swiss army knife of self knowledge. Experiment with it when you have acquired a few days of data. Remember that if you know SQL or SqlAlchemy, it is easy to construct your own queries against the database to get exactly the information you want, make pretty graphs, etc. There are a few stored properties, like coordinates of a mouse click and window geometry, that you can currently only reach through the database.
 
-### Selfstats Reference
+## Selfstats Reference
 
 The --help is a beast that right now looks something like this:
 
@@ -342,7 +342,7 @@ optional arguments:
 See the README file or http://gurgeh.github.com/selfspy for examples.
 ```
 
-### Email
+## Email feedback
 To monitor that Selfspy works as it should and to continuously get feedback on yourself, it is good to  regularly mail yourself some statistics. I think the easiest way to automate this is using [sendEmail](http://www.debianadmin.com/how-to-sendemail-from-the-command-line-using-a-gmail-account-and-others.html), which can do neat stuff like send through your Gmail account.
 
 For example, put something like this in your weekly [cron](http://clickmojo.com/code/cron-tutorial.html) jobs:
