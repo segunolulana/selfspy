@@ -59,7 +59,7 @@ in 10.9 you have to add the correct application in
 `System Preferences > Privacy > Accessibility`.
 
 
-#### Windows
+### Windows
 
 Due to Windows libs needing a external compiler to compile libs, some libs won't compile on all computers.   
 These are the sinners*:   
