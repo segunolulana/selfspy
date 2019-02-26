@@ -15,17 +15,23 @@
 # You should have received a copy of the GNU General Public License
 # along with Selfspy.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
+log = logging.getLogger(__name__)
+
 import time
 from datetime import datetime
 NOW = datetime.now
 
 import sqlalchemy
 
+PLATFORM='linux'
 import platform
 if platform.system() == 'Darwin':
     from selfspy import sniff_cocoa as sniffer
+    PLATFORM='osx'
 elif platform.system() == 'Windows':
     from selfspy import sniff_win as sniffer
+    PLATFORM='win'
 else:
     from selfspy import sniff_x as sniffer
 
@@ -96,6 +102,10 @@ class ActivityStore:
         self.sniffer.mouse_button_hook = self.got_mouse_click
         self.sniffer.mouse_move_hook = self.got_mouse_move
 
+        if PLATFORM == 'osx':
+            # Only tested on osx
+            self.sniffer.start_current_process = self.got_start_current_process
+
         self.sniffer.run()
 
     def got_screen_change(self, process_name, window_name, win_x, win_y, win_width, win_height):
@@ -113,8 +123,6 @@ class ActivityStore:
         args = [process_name, window_name, win_x, win_y, win_width, win_height]
         if self.last_screen_change == args:
             return
-
-        self.last_screen_change = args
 
         cur_process = self.session.query(
             Process
@@ -140,16 +148,25 @@ class ActivityStore:
         cur_window = self.session.query(Window).filter_by(title=window_name,
                                                           process_id=cur_process.id).scalar()
         if not cur_window:
+            log.debug(
+                u"Add window(process:{}, window:{})"
+                .format(process_name, window_name))
             cur_window = Window(window_name, cur_process.id)
             self.session.add(cur_window)
 
         if not (self.current_window.proc_id == cur_process.id
                 and self.current_window.win_id == cur_window.id):
+
             self.trycommit()
             self.store_keys()  # happens before as these keypresses belong to the previous window
             self.current_window.proc_id = cur_process.id
             self.current_window.win_id = cur_window.id
             self.current_window.geo_id = cur_geometry.id
+
+        # allows store_key method to log then update the variable
+        log.debug("Change screen to: {}".format(args))
+        self.last_screen_change = args
+
 
     def filter_many(self):
         specials_in_row = 0
@@ -183,6 +200,14 @@ class ActivityStore:
             self.filter_many()
 
         if self.key_presses:
+            if self.last_screen_change:
+                log.debug(
+                    u"Storing keys for: {} length: {}"
+                    .format(self.last_screen_change, len(self.key_presses)))
+            else:
+                log.warn("Storing keys to non-existent screen. Okay if first \
+                        screen")
+
             keys = [press.key for press in self.key_presses]
             timings = [press.time for press in self.key_presses]
             add = lambda count, press: count + (0 if press.is_repeat else 1)
@@ -208,6 +233,9 @@ class ActivityStore:
             self.started = NOW()
             self.key_presses = []
             self.last_key_time = time.time()
+        else:
+            log.warn("No keys, skipping...: {}"
+                .format(self.last_screen_change))
 
     def got_key(self, keycode, state, string, is_repeat):
         """ Receives key-presses and queues them for storage.
@@ -217,6 +245,8 @@ class ActivityStore:
                   specifier, i.e: SHIFT or SHIFT_L/SHIFT_R, ALT, CTRL
             string is the string representation of the key press
             repeat is True if the current key is a repeat sent by the keyboard """
+        log.debug("keycode:{} state:{} string:{} is_repeat:{}"
+            .format(keycode, state, string, is_repeat))
         now = time.time()
 
         if string in SKIP_MODIFIERS:
@@ -259,8 +289,14 @@ class ActivityStore:
             x,y are the new coorinates on moving the mouse"""
         self.mouse_path.append([x, y])
 
+    def got_start_current_process(self):
+        """ Reset the timer so tracking begins at the current time instead of
+        the time of the last store_keys method call"""
+        self.started = NOW()
+
     def close(self):
         """ stops the sniffer and stores the latest keys. To be used on shutdown of program"""
+        log.info("Shutting down Selfspy")
         self.sniffer.cancel()
         self.store_keys()
 

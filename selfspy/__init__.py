@@ -28,6 +28,8 @@ from lockfile import LockFile
 import hashlib
 from Crypto.Cipher import Blowfish
 
+import logging
+
 from selfspy.activity_store import ActivityStore
 from selfspy.password_dialog import get_password
 from selfspy import check_password
@@ -64,6 +66,8 @@ def parse_config():
     parser.add_argument('-r', '--no-repeat', action='store_true', help='Do not store special characters as repeated characters.')
 
     parser.add_argument('--change-password', action="store_true", help='Change the password used to encrypt the keys columns and exit.')
+    parser.add_argument('-v', '--verbose', action="count", help="verbose \
+            level... repeat up to three times.")
 
     return parser.parse_args()
 
@@ -75,6 +79,34 @@ def make_encrypter(password):
         encrypter = Blowfish.new(hashlib.md5(password).digest())
     return encrypter
 
+def set_level(args):
+    """Set log level to the value passed in from argparse
+
+    :args: dictionary of arguments parsed from argparse
+    """
+    if not args['verbose']:
+        return logging.DEBUG
+    elif args['verbose'] == 1:
+        return logging.WARNING
+    elif args['verbose'] == 2:
+        return logging.INFO
+    elif args['verbose'] == 3:
+        return logging.DEBUG
+    else:
+        return logging.NOTSET
+
+def set_logger(args):
+    """Initiate logger instance and set the logging level
+
+    :args: dictionary of arguments parsed from argparse
+
+    return: instance of logger
+    """
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
+        level=set_level(args))
+    logger = logging.getLogger(__name__)
+    return logger
+
 
 def main():
     try:
@@ -82,6 +114,9 @@ def main():
     except EnvironmentError as e:
         print str(e)
         sys.exit(1)
+
+    log = set_logger(args)
+    log.info("Starting Selfspy...")
 
     args['data_dir'] = os.path.expanduser(args['data_dir'])
 

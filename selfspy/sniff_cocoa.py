@@ -15,6 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with Selfspy.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
+log = logging.getLogger(__name__)
+
 from Foundation import NSObject
 from AppKit import NSApplication, NSApp, NSWorkspace
 from Cocoa import (
@@ -27,7 +30,10 @@ from Cocoa import (
     NSFlagsChangedMask,
     NSAlternateKeyMask, NSCommandKeyMask, NSControlKeyMask,
     NSShiftKeyMask, NSAlphaShiftKeyMask,
-    NSApplicationActivationPolicyProhibited
+    NSApplicationActivationPolicyProhibited,
+    NSWorkspaceDidWakeNotification, NSWorkspaceWillSleepNotification,
+    NSWorkspaceWillPowerOffNotification, NSWorkspaceScreensDidSleepNotification,
+    NSWorkspaceScreensDidWakeNotification
 )
 from Quartz import (
     CGWindowListCopyWindowInfo,
@@ -37,6 +43,7 @@ from Quartz import (
 )
 from PyObjCTools import AppHelper
 import config as cfg
+import logging
 import signal
 import time
 
@@ -49,6 +56,7 @@ class Sniffer:
         self.mouse_button_hook = lambda x: True
         self.mouse_move_hook = lambda x: True
         self.screen_hook = lambda x: True
+        self.start_current_process = lambda x: True
         self.last_check_windows = time.time()
 
     def createAppDelegate(self):
@@ -68,6 +76,70 @@ class Sniffer:
                         | NSFlagsChangedMask)
                 NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(mask, sc.handler)
 
+                # use reference to outer class (Sniffer)'s attributes
+                self.start_current_process = sc.start_current_process
+
+                self.registerNotifications()
+
+            def registerNotifications(self):
+                """Register the app to listen to system state events such as:
+                wake, sleep, and power off"""
+                workspace = NSWorkspace.sharedWorkspace()
+                notificationCenter = workspace.notificationCenter()
+                notificationCenter.addObserver_selector_name_object_(
+                    self,
+                    self.receiveSleepNotification_,
+                    NSWorkspaceWillSleepNotification,
+                    None
+                )
+                notificationCenter.addObserver_selector_name_object_(
+                    self,
+                    self.receiveWakeNotification_,
+                    NSWorkspaceDidWakeNotification,
+                    None
+                )
+                notificationCenter.addObserver_selector_name_object_(
+                    self,
+                    self.receivePowerOffNotification_,
+                    NSWorkspaceWillPowerOffNotification,
+                    None
+                )
+                notificationCenter.addObserver_selector_name_object_(
+                    self,
+                    self.receiveScreensDidSleep_,
+                    NSWorkspaceScreensDidSleepNotification,
+                    None
+                )
+                notificationCenter.addObserver_selector_name_object_(
+                    self,
+                    self.receiveScreensDidWake_,
+                    NSWorkspaceScreensDidWakeNotification,
+                    None
+                )
+
+            """
+            receive*(self, notification) methods are called when a system
+            state occurs. They may be useful in the future but for now they are
+            there for logging sake.
+            """
+            def receiveSleepNotification_(self, notification):
+                log.info("Received sleep")
+
+            def receiveWakeNotification_(self, notification):
+                log.info("Received wake")
+                self.start_current_process()
+
+            def receivePowerOffNotification_(self, notification):
+                log.info("Received power off")
+                self.applicationShouldTerminate_(notification)
+
+            def receiveScreensDidSleep_(self, notification):
+                log.info("Received screen sleep")
+
+            def receiveScreensDidWake_(self, notification):
+                log.info("Received screen wake")
+                self.start_current_process()
+
             def applicationWillResignActive(self, notification):
                 self.applicationWillTerminate_(notification)
                 return True
@@ -83,7 +155,7 @@ class Sniffer:
                 # pyobc bridge.
                 if cfg.LOCK.is_locked():
                     cfg.LOCK.release()
-                print("Exiting")
+                print("Releasing lock and exiting")
                 return None
 
         return AppDelegate
@@ -98,6 +170,7 @@ class Sniffer:
         def handler(signal, frame):
             AppHelper.stopEventLoop()
         signal.signal(signal.SIGINT, handler)
+        signal.signal(signal.SIGTERM, handler)
         AppHelper.runEventLoop()
 
     def cancel(self):
