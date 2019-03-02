@@ -21,7 +21,7 @@ import os
 import sys
 
 import argparse
-import ConfigParser
+from configparser import ConfigParser
 
 from lockfile import LockFile
 
@@ -76,8 +76,9 @@ def make_encrypter(password):
     if password == "":
         encrypter = None
     else:
-        encrypter = Blowfish.new(hashlib.md5(password).digest())
+        encrypter = Blowfish.new(hashlib.md5(password.encode('utf-8')).digest())
     return encrypter
+
 
 def set_level(args):
     """Set log level to the value passed in from argparse
@@ -112,7 +113,7 @@ def main():
     try:
         args = vars(parse_config())
     except EnvironmentError as e:
-        print str(e)
+        print(str(e))
         sys.exit(1)
 
     log = set_logger(args)
@@ -132,9 +133,9 @@ def main():
     lockname = os.path.join(args['data_dir'], cfg.LOCK_FILE)
     cfg.LOCK = LockFile(lockname)
     if cfg.LOCK.is_locked():
-        print '%s is locked! I am probably already running.' % lockname
-        print 'If you can find no selfspy process running, it is a stale lock and you can safely remove it.'
-        print 'Shutting down.'
+        print('%s is locked! I am probably already running.' % lockname)
+        print('If you can find no selfspy process running, it is a stale lock and you can safely remove it.')
+        print('Shutting down.')
         sys.exit(1)
 
     if args['no_text']:
@@ -146,13 +147,13 @@ def main():
     encrypter = make_encrypter(args['password'])
 
     if not check_password.check(args['data_dir'], encrypter):
-        print 'Password failed'
+        print('Password failed')
         sys.exit(1)
 
     if args['change_password']:
         new_password = get_password(message="New Password: ")
         new_encrypter = make_encrypter(new_password)
-        print 'Re-encrypting your keys...'
+        print('Re-encrypting your keys...')
         astore = ActivityStore(os.path.join(args['data_dir'], cfg.DBNAME),
                                encrypter,
                                store_text=(not args['no_text']),
@@ -162,7 +163,7 @@ def main():
         os.remove(os.path.join(args['data_dir'], check_password.DIGEST_NAME))
         check_password.check(args['data_dir'], new_encrypter)
         # don't assume we want the logger to run afterwards
-        print 'Exiting...'
+        print('Exiting...')
         sys.exit(0)
 
     astore = ActivityStore(os.path.join(args['data_dir'], cfg.DBNAME),

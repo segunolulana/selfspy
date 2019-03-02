@@ -16,6 +16,10 @@
 # along with Selfspy.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import sys
+
+import objc
+
 log = logging.getLogger(__name__)
 
 import time
@@ -106,7 +110,14 @@ class ActivityStore:
             # Only tested on osx
             self.sniffer.start_current_process = self.got_start_current_process
 
-        self.sniffer.run()
+        try:
+            self.sniffer.run()
+        except objc.BadPrototypeError:
+            if PLATFORM == 'osx':
+                print("Warning: you haven't give selfspy enough permissions to operate.")
+                sys.exit(1)
+            else:
+                raise
 
     def got_screen_change(self, process_name, window_name, win_x, win_y, win_width, win_height):
         """Receives a screen change and stores any changes.
