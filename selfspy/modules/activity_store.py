@@ -16,9 +16,6 @@
 # along with Selfspy.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-import sys
-
-import objc
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +28,7 @@ import sqlalchemy
 PLATFORM='linux'
 import platform
 if platform.system() == 'Darwin':
-    from selfspy import sniff_cocoa as sniffer
+    from modules import sniff_cocoa as sniffer
     PLATFORM='osx'
 elif platform.system() == 'Windows':
     from selfspy import sniff_win as sniffer
@@ -39,8 +36,8 @@ elif platform.system() == 'Windows':
 else:
     from selfspy import sniff_x as sniffer
 
-from selfspy import models
-from selfspy.models import Process, Window, Geometry, Click, Keys
+from modules import models
+from modules.models import Process, Window, Geometry, Click, Keys
 
 
 SKIP_MODIFIERS = {"", "Shift_L", "Control_L", "Super_L", "Alt_L", "Super_R", "Control_R", "Shift_R", "[65027]"}  # [65027] is AltGr in X for some ungodly reason.
@@ -110,14 +107,7 @@ class ActivityStore:
             # Only tested on osx
             self.sniffer.start_current_process = self.got_start_current_process
 
-        try:
-            self.sniffer.run()
-        except objc.BadPrototypeError:
-            if PLATFORM == 'osx':
-                print("Warning: you haven't give selfspy enough permissions to operate.")
-                sys.exit(1)
-            else:
-                raise
+        self.sniffer.run()
 
     def got_screen_change(self, process_name, window_name, win_x, win_y, win_width, win_height):
         """Receives a screen change and stores any changes.

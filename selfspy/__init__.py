@@ -30,11 +30,9 @@ from Crypto.Cipher import Blowfish
 
 import logging
 
-from selfspy.activity_store import ActivityStore
-from selfspy.password_dialog import get_password
-from selfspy import check_password
-
-from selfspy import config as cfg
+from modules.activity_store import ActivityStore
+from modules.password_dialog import get_password
+from modules import check_password, config as cfg
 
 
 def parse_config():

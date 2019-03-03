@@ -16,6 +16,7 @@
 # along with Selfspy.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+
 log = logging.getLogger(__name__)
 
 from Foundation import NSObject
@@ -42,22 +43,28 @@ from Quartz import (
     kCGNullWindowID
 )
 from PyObjCTools import AppHelper
-import config as cfg
-import logging
+from modules import config as cfg
 import signal
 import time
 
 FORCE_SCREEN_CHANGE = 10
 WAIT_ANIMATION = 1
 
+
 class Sniffer:
     def __init__(self):
-        self.key_hook = lambda x: True
-        self.mouse_button_hook = lambda x: True
-        self.mouse_move_hook = lambda x: True
-        self.screen_hook = lambda x: True
-        self.start_current_process = lambda x: True
+        self.key_hook = lambda: True
+        self.mouse_button_hook = lambda: True
+        self.mouse_move_hook = lambda: True
+        self.screen_hook = lambda: True
+        self.start_current_process = lambda: True
         self.last_check_windows = time.time()
+
+    @staticmethod
+    def release_lock():
+        if cfg.LOCK.is_locked():
+            cfg.LOCK.release()
+        print("Releasing lock and exiting")
 
     def createAppDelegate(self):
         sc = self
@@ -122,6 +129,7 @@ class Sniffer:
             state occurs. They may be useful in the future but for now they are
             there for logging sake.
             """
+
             def receiveSleepNotification_(self, notification):
                 log.info("Received sleep")
 
@@ -140,11 +148,12 @@ class Sniffer:
                 log.info("Received screen wake")
                 self.start_current_process()
 
-            def applicationWillResignActive(self, notification):
-                self.applicationWillTerminate_(notification)
+            def applicationWillResignActive(self):
+                sc.release_lock()
                 return True
 
             def applicationShouldTerminate_(self, notification):
+                print(notification)
                 self.applicationWillTerminate_(notification)
                 return True
 
@@ -153,9 +162,7 @@ class Sniffer:
                 # application terminates it does not run the rest the
                 # original main, only the code that has crossed the
                 # pyobc bridge.
-                if cfg.LOCK.is_locked():
-                    cfg.LOCK.release()
-                print("Releasing lock and exiting")
+                sc.release_lock()
                 return None
 
         return AppDelegate
@@ -169,6 +176,7 @@ class Sniffer:
 
         def handler(signal, frame):
             AppHelper.stopEventLoop()
+
         signal.signal(signal.SIGINT, handler)
         signal.signal(signal.SIGTERM, handler)
         AppHelper.runEventLoop()
@@ -182,8 +190,8 @@ class Sniffer:
             event_type = event.type()
             todo = lambda: None
             if (
-                time.time() - self.last_check_windows > FORCE_SCREEN_CHANGE and
-                event_type != NSKeyUp
+                    time.time() - self.last_check_windows > FORCE_SCREEN_CHANGE and
+                    event_type != NSKeyUp
             ):
                 self.last_check_windows = time.time()
                 check_windows = True
@@ -222,10 +230,10 @@ class Sniffer:
                 elif event.keyCode() == 51:
                     character = "Backspace"
                 todo = lambda: self.key_hook(event.keyCode(),
-                              modifiers,
-                              keycodes.get(character,
-                                           character),
-                              event.isARepeat())
+                                             modifiers,
+                                             keycodes.get(character,
+                                                          character),
+                                             event.isARepeat())
             elif event_type == NSMouseMoved:
                 todo = lambda: self.mouse_move_hook(loc.x, loc.y)
             elif event_type == NSFlagsChanged:
@@ -269,6 +277,7 @@ class Sniffer:
         except:
             AppHelper.stopEventLoop()
             raise
+
 
 # Cocoa does not provide a good api to get the keycodes, therefore we
 # have to provide our own.
