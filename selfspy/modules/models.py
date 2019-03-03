@@ -196,7 +196,7 @@ class Keys(SpookMixin, Base):
 
     def decrypt_keys(self):
         keys = maybe_decrypt(self.keys)
-        return json.loads(base64.b64decode(zlib.decompress(keys)))
+        return json.loads(zlib.decompress(base64.b64decode(keys)))
 
     def to_humanreadable(self, text):
         backrex = re.compile("\<\[Backspace\]x?(\d+)?\>",re.IGNORECASE)
@@ -217,7 +217,7 @@ class Keys(SpookMixin, Base):
         return text
 
     def load_timings(self):
-        return json.loads(base64.b64decode(zlib.decompress(self.timings)))
+        return json.loads(zlib.decompress(base64.b64decode(self.timings)))
 
     def __repr__(self):
         return "<Keys %s>" % self.nrkeys

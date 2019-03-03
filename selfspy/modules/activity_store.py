@@ -25,21 +25,20 @@ import functools
 from datetime import datetime
 NOW = datetime.now
 
-import sqlalchemy
+from sqlalchemy import exc
 
 PLATFORM='linux'
 import platform
 if platform.system() == 'Darwin':
-    from modules import sniff_cocoa as sniffer
+    from selfspy.modules import sniff_cocoa as sniffer
     PLATFORM='osx'
 elif platform.system() == 'Windows':
-    from selfspy import sniff_win as sniffer
+    from selfspy.modules import sniff_win as sniffer
     PLATFORM='win'
 else:
-    from selfspy import sniff_x as sniffer
+    from selfspy.modules import sniff_x as sniffer
 
-from modules import models
-from modules.models import Process, Window, Geometry, Click, Keys
+from selfspy.modules import models
 
 
 SKIP_MODIFIERS = {"", "Shift_L", "Control_L", "Super_L", "Alt_L", "Super_R", "Control_R", "Shift_R", "[65027]"}  # [65027] is AltGr in X for some ungodly reason.
@@ -91,7 +90,7 @@ class ActivityStore:
             try:
                 self.session.commit()
                 break
-            except sqlalchemy.exc.OperationalError:
+            except exc.OperationalError:
                 time.sleep(1)
             except:
                 self.session.rollback()
@@ -128,16 +127,16 @@ class ActivityStore:
             return
 
         cur_process = self.session.query(
-            Process
+            models.Process
         ).filter_by(
             name=process_name
         ).scalar()
         if not cur_process:
-            cur_process = Process(process_name)
+            cur_process = models.Process(process_name)
             self.session.add(cur_process)
 
         cur_geometry = self.session.query(
-            Geometry
+            models.Geometry
         ).filter_by(
             xpos=win_x,
             ypos=win_y,
@@ -145,16 +144,16 @@ class ActivityStore:
             height=win_height
         ).scalar()
         if not cur_geometry:
-            cur_geometry = Geometry(win_x, win_y, win_width, win_height)
+            cur_geometry = models.Geometry(win_x, win_y, win_width, win_height)
             self.session.add(cur_geometry)
 
-        cur_window = self.session.query(Window).filter_by(title=window_name,
-                                                          process_id=cur_process.id).scalar()
+        cur_window = self.session.query(models.Window).filter_by(title=window_name,
+                                                                 process_id=cur_process.id).scalar()
         if not cur_window:
             log.debug(
                 u"Add window(process:{}, window:{})"
                 .format(process_name, window_name))
-            cur_window = Window(window_name, cur_process.id)
+            cur_window = models.Window(window_name, cur_process.id)
             self.session.add(cur_window)
 
         if not (self.current_window.proc_id == cur_process.id
@@ -224,7 +223,7 @@ class ActivityStore:
             else:
                 curtext = ''.join(keys)
 
-            keys_to_store = Keys(curtext.encode('utf8'), keys, timings, nrkeys,
+            keys_to_store = models.Keys(curtext.encode('utf8'), keys, timings, nrkeys,
                                  self.started, self.current_window.proc_id,
                                  self.current_window.win_id, self.current_window.geo_id)
             self.session.add(keys_to_store)
@@ -261,7 +260,7 @@ class ActivityStore:
 
     def store_click(self, button, x, y):
         """ Stores incoming mouse-clicks """
-        self.session.add(Click(button,
+        self.session.add(models.Click(button,
                                True,
                                x, y,
                                len(self.mouse_path),
@@ -301,7 +300,7 @@ class ActivityStore:
 
     def change_password(self, new_encrypter):
         self.session = self.session_maker()
-        keys = self.session.query(Keys).all()
+        keys = self.session.query(models.Keys).all()
         for k in keys:
             dtext = k.decrypt_text()
             dkeys = k.decrypt_keys()

@@ -31,12 +31,12 @@ from collections import Counter
 from Crypto.Cipher import Blowfish
 import hashlib
 
-from modules import check_password, models, config as cfg
-from modules.password_dialog import get_password
-from modules.period import Period
+from selfspy.modules import check_password, models, config as cfg
+from selfspy.modules.password_dialog import get_password
+from selfspy.modules.period import Period
 
-import codecs
-sys.stdout = codecs.getwriter('utf8')(sys.stdout)
+# import codecs
+# sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
 ACTIVE_SECONDS = 180
 PERIOD_LOOKUP = {'s': 'seconds', 'm': 'minutes', 'h': 'hours', 'd': 'days', 'w': 'weeks'}
@@ -546,7 +546,7 @@ def make_encrypter(password):
     if password == "":
         encrypter = None
     else:
-        encrypter = Blowfish.new(hashlib.md5(password).digest())
+        encrypter = Blowfish.new(hashlib.md5(password.encode('utf-8')).digest())
     return encrypter
 
 

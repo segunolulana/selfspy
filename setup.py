@@ -19,12 +19,12 @@ print('"%s"' % requires)
 
 setup(name="selfspy",
       version='0.3.0',
-      packages=['selfspy'],
+      packages=['selfspy', 'selfspy.modules'],
       author="David Fendrich",
       description=''.join("""
           Log everything you do on the computer, for statistics,
           future reference and all-around fun!
       """.strip().split('\n')),
       install_requires=requires,
-      entry_points=dict(console_scripts=['selfspy=selfspy:main',
+      entry_points=dict(console_scripts=['selfspy=selfspy.selfspy:main',
                                          'selfstats=selfspy.stats:main']))

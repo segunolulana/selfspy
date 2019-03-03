@@ -44,7 +44,7 @@ from Quartz import (
     kCGNullWindowID
 )
 from PyObjCTools import AppHelper
-from modules import config as cfg
+from selfspy.modules import config as cfg
 import signal
 import time
 
