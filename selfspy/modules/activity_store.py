@@ -16,10 +16,12 @@
 # along with Selfspy.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import traceback
 
 log = logging.getLogger(__name__)
 
 import time
+import functools
 from datetime import datetime
 NOW = datetime.now
 
@@ -158,11 +160,14 @@ class ActivityStore:
         if not (self.current_window.proc_id == cur_process.id
                 and self.current_window.win_id == cur_window.id):
 
-            self.trycommit()
-            self.store_keys()  # happens before as these keypresses belong to the previous window
-            self.current_window.proc_id = cur_process.id
-            self.current_window.win_id = cur_window.id
-            self.current_window.geo_id = cur_geometry.id
+            try:
+                self.trycommit()
+                self.store_keys()  # happens before as these keypresses belong to the previous window
+                self.current_window.proc_id = cur_process.id
+                self.current_window.win_id = cur_window.id
+                self.current_window.geo_id = cur_geometry.id
+            except:
+                traceback.print_exc()
 
         # allows store_key method to log then update the variable
         log.debug("Change screen to: {}".format(args))
@@ -206,13 +211,12 @@ class ActivityStore:
                     u"Storing keys for: {} length: {}"
                     .format(self.last_screen_change, len(self.key_presses)))
             else:
-                log.warn("Storing keys to non-existent screen. Okay if first \
-                        screen")
+                log.warning("Storing keys to non-existent screen. Okay if first screen")
 
             keys = [press.key for press in self.key_presses]
             timings = [press.time for press in self.key_presses]
             add = lambda count, press: count + (0 if press.is_repeat else 1)
-            nrkeys = reduce(add, self.key_presses, 0)
+            nrkeys = functools.reduce(add, self.key_presses, 0)
 
             curtext = u""
             if not self.store_text:
@@ -220,14 +224,10 @@ class ActivityStore:
             else:
                 curtext = ''.join(keys)
 
-            self.session.add(Keys(curtext.encode('utf8'),
-                                  keys,
-                                  timings,
-                                  nrkeys,
-                                  self.started,
-                                  self.current_window.proc_id,
-                                  self.current_window.win_id,
-                                  self.current_window.geo_id))
+            keys_to_store = Keys(curtext.encode('utf8'), keys, timings, nrkeys,
+                                 self.started, self.current_window.proc_id,
+                                 self.current_window.win_id, self.current_window.geo_id)
+            self.session.add(keys_to_store)
 
             self.trycommit()
 
@@ -235,8 +235,7 @@ class ActivityStore:
             self.key_presses = []
             self.last_key_time = time.time()
         else:
-            log.warn("No keys, skipping...: {}"
-                .format(self.last_screen_change))
+            log.warning("No keys, skipping...: {}".format(self.last_screen_change))
 
     def got_key(self, keycode, state, string, is_repeat):
         """ Receives key-presses and queues them for storage.
@@ -246,8 +245,7 @@ class ActivityStore:
                   specifier, i.e: SHIFT or SHIFT_L/SHIFT_R, ALT, CTRL
             string is the string representation of the key press
             repeat is True if the current key is a repeat sent by the keyboard """
-        log.debug("keycode:{} state:{} string:{} is_repeat:{}"
-            .format(keycode, state, string, is_repeat))
+        log.debug("keycode:{} state:{} string:{} is_repeat:{}".format(keycode, state, string, is_repeat))
         now = time.time()
 
         if string in SKIP_MODIFIERS:

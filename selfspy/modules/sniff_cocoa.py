@@ -16,6 +16,7 @@
 # along with Selfspy.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import os
 
 log = logging.getLogger(__name__)
 
@@ -51,6 +52,12 @@ FORCE_SCREEN_CHANGE = 10
 WAIT_ANIMATION = 1
 
 
+def release_lock():
+    if cfg.LOCK.is_locked():
+        cfg.LOCK.release()
+    log.info("Releasing lock and exiting")
+
+
 class Sniffer:
     def __init__(self):
         self.key_hook = lambda: True
@@ -59,12 +66,6 @@ class Sniffer:
         self.screen_hook = lambda: True
         self.start_current_process = lambda: True
         self.last_check_windows = time.time()
-
-    @staticmethod
-    def release_lock():
-        if cfg.LOCK.is_locked():
-            cfg.LOCK.release()
-        print("Releasing lock and exiting")
 
     def createAppDelegate(self):
         sc = self
@@ -148,22 +149,52 @@ class Sniffer:
                 log.info("Received screen wake")
                 self.start_current_process()
 
-            def applicationWillResignActive(self):
-                sc.release_lock()
+            def applicationWillResignActive_(self, notification):
+                log.info("Received app will resign")
+                release_lock()
                 return True
 
-            def applicationShouldTerminate_(self, notification):
-                print(notification)
-                self.applicationWillTerminate_(notification)
-                return True
+            def applicationShouldTerminate_(self, sender: NSApplication):
+                """
+                This is called even when the window just change.
+                Never allow the app to close. The outer class will take
+                care of that with signal handling.
+                """
+                log.info("Received app should terminate, but not signal TERMINATION")
+                return False
 
             def applicationWillTerminate_(self, notification):
+                log.info("Received app will terminate")
                 # need to release the lock here as when the
                 # application terminates it does not run the rest the
                 # original main, only the code that has crossed the
                 # pyobc bridge.
-                sc.release_lock()
+                release_lock()
                 return None
+
+            def applicationWillHide_(self, notification):
+                log.info("Received applicationWillHide_")
+
+            def applicationWillUnhide_(self, notification):
+                log.info("Received applicationWillUnhide_")
+
+            def applicationDidHide_(self, notification):
+                log.info("Received applicationDidHide_")
+
+            def applicationDidUnhide_(self, notification):
+                log.info("Received applicationDidUnhide_")
+
+            def applicationWillBecomeActive_(self, notification):
+                log.info("Received applicationWillBecomeActive_")
+
+            def applicationDidBecomeActive_(self, notification):
+                log.info("Received applicationDidBecomeActive_")
+
+            def applicationDidResignActive_(self, notification):
+                log.info("Received applicationDidResignActive_")
+
+            def applicationShouldTerminateAfterLastWindowClosed_(self, notification):
+                log.info("Received applicationShouldTerminateAfterLastWindowClosed_")
 
         return AppDelegate
 
@@ -175,10 +206,14 @@ class Sniffer:
         self.workspace = NSWorkspace.sharedWorkspace()
 
         def handler(signal, frame):
+            log.debug("Got signal termination")
+            release_lock()
             AppHelper.stopEventLoop()
+            os._exit(1)
 
         signal.signal(signal.SIGINT, handler)
         signal.signal(signal.SIGTERM, handler)
+
         AppHelper.runEventLoop()
 
     def cancel(self):
