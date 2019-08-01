@@ -97,7 +97,7 @@ class Sniffer:
         if reply.client_swapped:
             print("* received swapped protocol data, cowardly ignored")
             return
-        if not len(reply.data) or ord(reply.data[0]) < 2:
+        if not len(reply.data) or bytearray(reply.data)[0] < 2:
             # not an event
             return
 
@@ -134,7 +134,7 @@ class Sniffer:
         state_idx = state_to_idx(state)
         cn = self.keymap[keycode][state_idx]
         if cn < 256:
-            return chr(cn).decode('latin1')
+            return chr(cn)
         else:
             return self.lookup_keysym(cn)
 
@@ -181,10 +181,12 @@ class Sniffer:
             # Fixing utf8 issue on Ubuntu (https://github.com/gurgeh/selfspy/issues/133)
             # Thanks to https://github.com/gurgeh/selfspy/issues/133#issuecomment-142943681
             try:
-                return d.value.decode('utf8')
+                return d.value.decode('utf8', 'surrogateescape')
             except UnicodeError:
                 return d.value.encode('utf8').decode('utf8')
 
+    # XXX implement xdotool's getwindowfocus
+    # https://github.com/jordansissel/xdotool/blob/6523b5fe7f0cc52e690e66f3903163204c30f194/xdo.c#L1169
     def get_cur_window(self):
         i = 0
         cur_class = None
@@ -212,7 +214,7 @@ class Sniffer:
             break
         cur_class = cur_class or ''
         cur_name = cur_name or ''
-        return cur_class.decode('latin1'), cur_window, cur_name
+        return cur_class, cur_window, cur_name
 
     def get_geometry(self, cur_window):
         i = 0
