@@ -181,7 +181,8 @@ class Sniffer:
             # Fixing utf8 issue on Ubuntu (https://github.com/gurgeh/selfspy/issues/133)
             # Thanks to https://github.com/gurgeh/selfspy/issues/133#issuecomment-142943681
             try:
-                return d.value.decode('utf8', 'surrogateescape')
+                #return d.value.decode('utf8', 'surrogateescape')
+                return d.value
             except UnicodeError:
                 return d.value.encode('utf8').decode('utf8')
 
