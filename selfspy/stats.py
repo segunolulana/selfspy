@@ -424,16 +424,16 @@ class Selfstats:
 
         if self.args['pkeys']:
             print('Processes sorted by keystrokes:')
-            pdata = self.processes.items()
-            pdata.sort(key=lambda x: x[1].get('keystrokes', 0), reverse=True)
+            pdata = sorted(self.processes.items(), key=lambda x:
+                           x[1].get('keystrokes', 0), reverse=True)
             for name, data in pdata:
                 print(name, data.get('keystrokes', 0))
             print
 
         if self.args['tkeys']:
             print('Window titles sorted by keystrokes:')
-            wdata = self.windows.items()
-            wdata.sort(key=lambda x: x[1].get('keystrokes', 0), reverse=True)
+            wdata = sorted(self.windows.items(), key=lambda x:
+                           x[1].get('keystrokes', 0), reverse=True)
             for name, data in wdata:
                 print(name, data.get('keystrokes', 0))
             print
