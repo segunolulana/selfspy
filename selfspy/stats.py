@@ -299,7 +299,7 @@ class Selfstats:
                     body = x.decrypt_humanreadable()
                 else:
                     body = x.decrypt_text()
-                if bodrex.search(body):
+                if bodrex.search(body.decode('utf-8')):
                     yield x
         else:
             for x in q:

@@ -7,7 +7,7 @@
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 
-# Selfspy is distributed in the hope that it will be useful,
+# Selfspy is ditributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -200,7 +200,7 @@ class Keys(SpookMixin, Base):
 
     def to_humanreadable(self, text):
         backrex = re.compile("\<\[Backspace\]x?(\d+)?\>",re.IGNORECASE)
-        matches = backrex.search(text)
+        matches = backrex.search(text.decode('utf-8'))
         while matches is not None:
             backspaces = matches.group(1)
             try:
@@ -213,7 +213,7 @@ class Keys(SpookMixin, Base):
                 newstart = 0
 
             text = (text[:newstart] + text[matches.end():])
-            matches = backrex.search(text)
+            matches = backrex.search(text.decode('utf-8'))
         return text
 
     def load_timings(self):
