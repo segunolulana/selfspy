@@ -242,7 +242,7 @@ class Selfstats:
                 sys.exit(1)
 
             for x in self.session.query(table).all():
-                if reg.search(x.__getattribute__(source_prop)):
+                if reg.search(str(x.__getattribute__(source_prop))):
                     ids.append(x.id)
             if not self.inmouse:
                 print('%d %s matched' % (len(ids), names))
