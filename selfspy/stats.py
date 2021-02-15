@@ -57,25 +57,26 @@ def pretty_seconds(secs):
     secs = int(secs)
     active = False
     outs = ''
-    days = secs / (3600 * 24)
-    if days:
+
+    days = int(secs / (3600 * 24))
+    if days > 1:
         active = True
         outs += '%d days, ' % days
-    secs -= days * (3600 * 24)
+        secs -= days * (3600 * 24)
 
-    hours = secs / 3600
-    if hours:
+    hours = int(secs / 3600)
+    if hours > 1:
         active = True
+        secs -= hours * 3600
     if active:
         outs += '%dh ' % hours
-    secs -= hours * 3600
 
-    minutes = secs / 60
-    if minutes:
+    minutes = int(secs / 60)
+    if minutes > 1:
         active = True
+        secs -= minutes * 60
     if active:
         outs += '%dm ' % minutes
-    secs -= minutes * 60
 
     outs += '%ds' % secs
 
