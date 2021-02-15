@@ -26,7 +26,8 @@ from Xlib.error import XError
 from Xlib.protocol import rq
 
 
-def state_to_idx(state):  # this could be a dict, but I might want to extend it.
+def state_to_idx(state):
+    # this could be a dict, but I might want to extend it.
     if state == 1:
         return 1
     if state == 128:
@@ -54,8 +55,8 @@ class Sniffer:
         self.record_display = display.Display()
         self.keymap = self.the_display._keymap_codes
 
-        self.atom_NET_WM_NAME = self.the_display.intern_atom('_NET_WM_NAME')
-        self.atom_UTF8_STRING = self.the_display.intern_atom('UTF8_STRING')
+        self.atom_NET_WM_NAME = self.the_display.intern_atom("_NET_WM_NAME")
+        self.atom_UTF8_STRING = self.the_display.intern_atom("UTF8_STRING")
 
     def run(self):
         # Check if the extension is present
@@ -67,19 +68,22 @@ class Sniffer:
 
         # Create a recording context; we only want key and mouse events
         self.ctx = self.record_display.record_create_context(
-                0,
-                [record.AllClients],
-                [{
-                        'core_requests': (0, 0),
-                        'core_replies': (0, 0),
-                        'ext_requests': (0, 0, 0, 0),
-                        'ext_replies': (0, 0, 0, 0),
-                        'delivered_events': (0, 0),
-                        'device_events': tuple(self.contextEventMask),
-                        'errors': (0, 0),
-                        'client_started': False,
-                        'client_died': False,
-                }])
+            0,
+            [record.AllClients],
+            [
+                {
+                    "core_requests": (0, 0),
+                    "core_replies": (0, 0),
+                    "ext_requests": (0, 0, 0, 0),
+                    "ext_replies": (0, 0, 0, 0),
+                    "delivered_events": (0, 0),
+                    "device_events": tuple(self.contextEventMask),
+                    "errors": (0, 0),
+                    "client_started": False,
+                    "client_died": False,
+                }
+            ],
+        )
 
         # Enable the context; this only returns after a call to record_disable_context,
         # while calling the callback function in the meantime
@@ -105,17 +109,21 @@ class Sniffer:
         if cur_class:
             cur_geo = self.get_geometry(cur_window)
             if cur_geo:
-                self.screen_hook(cur_class,
-                                 cur_name,
-                                 cur_geo.x,
-                                 cur_geo.y,
-                                 cur_geo.width,
-                                 cur_geo.height)
+                self.screen_hook(
+                    cur_class,
+                    cur_name,
+                    cur_geo.x,
+                    cur_geo.y,
+                    cur_geo.width,
+                    cur_geo.height,
+                )
 
         data = reply.data
         while len(data):
             ef = rq.EventField(None)
-            event, data = ef.parse_binary_value(data, self.record_display.display, None, None)
+            event, data = ef.parse_binary_value(
+                data, self.record_display.display, None, None
+            )
             if event.type in [X.KeyPress]:
                 # X.KeyRelease, we don't log this anyway
                 self.key_hook(*self.key_event(event))
@@ -127,7 +135,7 @@ class Sniffer:
             elif event.type == X.MappingNotify:
                 self.the_display.refresh_keyboard_mapping()
                 newkeymap = self.the_display._keymap_codes
-                print('Change keymap!', newkeymap == self.keymap)
+                print("Change keymap!", newkeymap == self.keymap)
                 self.keymap = newkeymap
 
     def get_key_name(self, keycode, state):
@@ -142,17 +150,19 @@ class Sniffer:
         flags = event.state
         modifiers = []
         if flags & X.ControlMask:
-            modifiers.append('Ctrl')
+            modifiers.append("Ctrl")
         if flags & X.Mod1Mask:  # Mod1 is the alt key
-            modifiers.append('Alt')
+            modifiers.append("Alt")
         if flags & X.Mod4Mask:  # Mod4 should be super/windows key
-            modifiers.append('Super')
+            modifiers.append("Super")
         if flags & X.ShiftMask:
-            modifiers.append('Shift')
-        return (event.detail,
-                modifiers,
-                self.get_key_name(event.detail, event.state),
-                event.sequence_number == 1)
+            modifiers.append("Shift")
+        return (
+            event.detail,
+            modifiers,
+            self.get_key_name(event.detail, event.state),
+            event.sequence_number == 1,
+        )
 
     def button_event(self, event):
         return event.detail, event.root_x, event.root_y
@@ -181,10 +191,10 @@ class Sniffer:
             # Fixing utf8 issue on Ubuntu (https://github.com/gurgeh/selfspy/issues/133)
             # Thanks to https://github.com/gurgeh/selfspy/issues/133#issuecomment-142943681
             try:
-                #return d.value.decode('utf8', 'surrogateescape')
+                # return d.value.decode('utf8', 'surrogateescape')
                 return d.value
             except UnicodeError:
-                return d.value.encode('utf8').decode('utf8')
+                return d.value.encode("utf8").decode("utf8")
 
     # XXX implement xdotool's getwindowfocus
     # https://github.com/jordansissel/xdotool/blob/6523b5fe7f0cc52e690e66f3903163204c30f194/xdo.c#L1169
@@ -213,8 +223,8 @@ class Sniffer:
                 i += 1
                 continue
             break
-        cur_class = cur_class or ''
-        cur_name = cur_name or ''
+        cur_class = cur_class or ""
+        cur_name = cur_name or ""
         return cur_class, cur_window, cur_name
 
     def get_geometry(self, cur_window):
