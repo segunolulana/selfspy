@@ -1,3 +1,7 @@
+### Ported for python3
+I've been porting the code for py3 and testing this daily for a while. I'm fixing the problems as I run into them, so there might still be some. This repo currently only has some Linux and Mac OS fixes from various forks and my own additions; I'm planning on integrating the windows fixes as well.
+
+
 ## What is this?
 Selfspy is a daemon for Unix/X11, (thanks to @ljos!) Mac OS X and (thanks to @Foxboron) Windows, that continuously monitors and stores what you are doing on your computer. This way, you can get all sorts of nifty statistics and reminders on what you have been up to. It is inspired by the [Quantified Self](http://en.wikipedia.org/wiki/Quantified_Self)-movement and [Stephen Wolfram's personal key logging](http://blog.stephenwolfram.com/2012/03/the-personal-analytics-of-my-life/).
 
