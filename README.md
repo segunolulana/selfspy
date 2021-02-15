@@ -11,28 +11,21 @@ See Example Statistics, below, for some of the fabulous things you can do with t
    
 ## Dependencies
 
-Selfspy is only tested with Python 2.7 and has a few dependencies on other Python libraries that need to be satisfied. These are documented in the requirements.txt file. 
+This fork has been ported for python3. Dependencies are documented in the requirements.txt file. python-tkinter has to be installed either from a package manager, or from source, as it's not in pypi:
 
 
 ### Linux
-If you are on Linux, you will need subversion installed for pip to install python-xlib. Python-xlib is currently a tricky package to include in the requirements since it is not on PyPi.
-
-```
-pip install svn+https://python-xlib.svn.sourceforge.net/svnroot/python-xlib/tags/xlib_0_15rc1/ # Only do this step on Linux!
-```
 
 #### Ubuntu & Debian
 
 ```
-sudo apt-get install python-tk
+sudo apt-get install python3-tk
 ```
 
-#### ArchLinux
-
-Here is an AUR package which may be up-to-date:
-https://aur.archlinux.org/packages/selfspy-git/
-
-If it is not, see manual install below.
+#### Fedora
+```
+sudo dnf install python3-tkinter
+```
 
 ### BSD
 
@@ -46,7 +39,7 @@ sudo make config-recursive && sudo make install clean
 
 #### OpenBSD
 
-Install python-tkinter (choose python 2.7 version):
+Install python-tkinter (choose python 3 version):
 ```
 # pkg_add python-tkinter
 ```
@@ -63,7 +56,7 @@ in 10.9 you have to add the correct application in
 `System Preferences > Privacy > Accessibility`.
 
 
-### Windows
+### Windows (python3 port still WIP)
 
 Due to Windows libs needing a external compiler to compile libs, some libs won't compile on all computers.   
 These are the sinners*:   
