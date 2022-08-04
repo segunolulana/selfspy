@@ -23,25 +23,39 @@ log = logging.getLogger(__name__)
 import time
 import functools
 from datetime import datetime
+
 NOW = datetime.now
 
 from sqlalchemy import exc
 
-PLATFORM='linux'
+PLATFORM = 'linux'
 import platform
+
 if platform.system() == 'Darwin':
     from selfspy.modules import sniff_cocoa as sniffer
-    PLATFORM='osx'
+
+    PLATFORM = 'osx'
 elif platform.system() == 'Windows':
     from selfspy.modules import sniff_win as sniffer
-    PLATFORM='win'
+
+    PLATFORM = 'win'
 else:
     from selfspy.modules import sniff_x as sniffer
 
 from selfspy.modules import models
 
 
-SKIP_MODIFIERS = {"", "Shift_L", "Control_L", "Super_L", "Alt_L", "Super_R", "Control_R", "Shift_R", "[65027]"}  # [65027] is AltGr in X for some ungodly reason.
+SKIP_MODIFIERS = {
+    "",
+    "Shift_L",
+    "Control_L",
+    "Super_L",
+    "Alt_L",
+    "Super_R",
+    "Control_R",
+    "Shift_R",
+    "[65027]",
+}  # [65027] is AltGr in X for some ungodly reason.
 
 SCROLL_BUTTONS = {4, 5, 6, 7}
 SCROLL_COOLOFF = 10  # seconds
@@ -92,7 +106,9 @@ class ActivityStore:
                 break
             except exc.OperationalError:
                 time.sleep(1)
-            except:
+                log.debug("OperationalError")
+            except Exception as excpn:
+                log.debug(excpn)
                 self.session.rollback()
 
     def run(self):
@@ -126,38 +142,27 @@ class ActivityStore:
         if self.last_screen_change == args:
             return
 
-        cur_process = self.session.query(
-            models.Process
-        ).filter_by(
-            name=process_name
-        ).scalar()
+        cur_process = self.session.query(models.Process).filter_by(name=process_name).scalar()
         if not cur_process:
             cur_process = models.Process(process_name)
             self.session.add(cur_process)
 
-        cur_geometry = self.session.query(
-            models.Geometry
-        ).filter_by(
-            xpos=win_x,
-            ypos=win_y,
-            width=win_width,
-            height=win_height
-        ).scalar()
+        cur_geometry = (
+            self.session.query(models.Geometry)
+            .filter_by(xpos=win_x, ypos=win_y, width=win_width, height=win_height)
+            .scalar()
+        )
         if not cur_geometry:
             cur_geometry = models.Geometry(win_x, win_y, win_width, win_height)
             self.session.add(cur_geometry)
 
-        cur_window = self.session.query(models.Window).filter_by(title=window_name,
-                                                                 process_id=cur_process.id).scalar()
+        cur_window = self.session.query(models.Window).filter_by(title=window_name, process_id=cur_process.id).scalar()
         if not cur_window:
-            log.debug(
-                u"Add window(process:{}, window:{})"
-                .format(process_name, window_name))
+            log.debug(u"Add window(process:{}, window:{})".format(process_name, window_name))
             cur_window = models.Window(window_name, cur_process.id)
             self.session.add(cur_window)
 
-        if not (self.current_window.proc_id == cur_process.id
-                and self.current_window.win_id == cur_window.id):
+        if not (self.current_window.proc_id == cur_process.id and self.current_window.win_id == cur_window.id):
 
             try:
                 self.trycommit()
@@ -171,7 +176,6 @@ class ActivityStore:
         # allows store_key method to log then update the variable
         log.debug("Change screen to: {}".format(args))
         self.last_screen_change = args
-
 
     def filter_many(self):
         specials_in_row = 0
@@ -206,9 +210,7 @@ class ActivityStore:
 
         if self.key_presses:
             if self.last_screen_change:
-                log.debug(
-                    u"Storing keys for: {} length: {}"
-                    .format(self.last_screen_change, len(self.key_presses)))
+                log.debug(u"Storing keys for: {} length: {}".format(self.last_screen_change, len(self.key_presses)))
             else:
                 log.warning("Storing keys to non-existent screen. Okay if first screen")
 
@@ -223,11 +225,19 @@ class ActivityStore:
             else:
                 curtext = ''.join(keys)
 
-            keys_to_store = models.Keys(curtext.encode('utf8'), keys, timings, nrkeys,
-                                 self.started, self.current_window.proc_id,
-                                 self.current_window.win_id, self.current_window.geo_id)
+            keys_to_store = models.Keys(
+                curtext.encode('utf8'),
+                keys,
+                timings,
+                nrkeys,
+                self.started,
+                self.current_window.proc_id,
+                self.current_window.win_id,
+                self.current_window.geo_id,
+            )
             self.session.add(keys_to_store)
 
+            log.debug("Committing keys")
             self.trycommit()
 
             self.started = NOW()
@@ -260,13 +270,18 @@ class ActivityStore:
 
     def store_click(self, button, x, y):
         """ Stores incoming mouse-clicks """
-        self.session.add(models.Click(button,
-                               True,
-                               x, y,
-                               len(self.mouse_path),
-                               self.current_window.proc_id,
-                               self.current_window.win_id,
-                               self.current_window.geo_id))
+        self.session.add(
+            models.Click(
+                button,
+                True,
+                x,
+                y,
+                len(self.mouse_path),
+                self.current_window.proc_id,
+                self.current_window.win_id,
+                self.current_window.geo_id,
+            )
+        )
         self.mouse_path = []
         self.trycommit()
 
