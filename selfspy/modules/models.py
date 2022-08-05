@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Selfspy.  If not, see <http://www.gnu.org/licenses/>.
 import base64
+import logging
 import zlib
 import json
 import re
@@ -22,10 +23,7 @@ import re
 import datetime
 
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
-from sqlalchemy import (
-    Index, Column, Boolean, Integer, Unicode, DateTime, Binary, ForeignKey,
-    create_engine
-)
+from sqlalchemy import Index, Column, Boolean, Integer, Unicode, DateTime, Binary, ForeignKey, create_engine
 from sqlalchemy.orm import sessionmaker, relationship, backref
 
 
@@ -34,13 +32,14 @@ def initialize(fname):
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)
 
+
 ENCRYPTER = None
+log = logging.getLogger(__name__)
 
 Base = declarative_base()
 
 
 class SpookMixin(object):
-
     @declared_attr
     def __tablename__(cls):
         return cls.__name__.lower()
@@ -130,10 +129,12 @@ def pad(s, padnum):
 
 
 def maybe_encrypt(s, other_encrypter=None):
+    log.debug("Using maybe_encrypt")
     if other_encrypter is not None:
         s = pad(s, 8)
         s = other_encrypter.encrypt(s)
     elif ENCRYPTER:
+        log.debug("Using ENCRYPTER")
         s = pad(s, 8)
         s = ENCRYPTER.encrypt(s)
     return s
@@ -180,12 +181,23 @@ class Keys(SpookMixin, Base):
         self.geometry_id = geometry_id
 
     def encrypt_text(self, text, other_encrypter=None):
-        ztext = maybe_encrypt(text.decode('utf-8'), other_encrypter=other_encrypter)
+        # ztext = maybe_encrypt(text.decode('utf-8'), other_encrypter=other_encrypter)
+        ztext = maybe_encrypt(text, other_encrypter=other_encrypter)
+        # ztext = maybe_encrypt(
+        #     base64.b64encode(zlib.compress(json.dumps(text).encode('utf-8'))),
+        #     other_encrypter=other_encrypter,
+        # )
         self.text = ztext
 
     def encrypt_keys(self, keys, other_encrypter=None):
-        zkeys = maybe_encrypt(base64.b64encode(zlib.compress(json.dumps(keys).encode('utf-8'))).decode('utf-8'),
-                              other_encrypter=other_encrypter)
+        # zkeys = maybe_encrypt(
+        #     base64.b64encode(zlib.compress(json.dumps(keys).encode('utf-8'))).decode('utf-8'),
+        #     other_encrypter=other_encrypter,
+        # )
+        zkeys = maybe_encrypt(
+            base64.b64encode(zlib.compress(json.dumps(keys).encode('utf-8'))),
+            other_encrypter=other_encrypter,
+        )
         self.keys = zkeys
 
     def decrypt_text(self):
@@ -199,7 +211,7 @@ class Keys(SpookMixin, Base):
         return json.loads(zlib.decompress(base64.b64decode(keys)))
 
     def to_humanreadable(self, text):
-        backrex = re.compile("\<\[Backspace\]x?(\d+)?\>",re.IGNORECASE)
+        backrex = re.compile("\<\[Backspace\]x?(\d+)?\>", re.IGNORECASE)
         matches = backrex.search(text.decode('utf-8'))
         while matches is not None:
             backspaces = matches.group(1)
@@ -212,7 +224,7 @@ class Keys(SpookMixin, Base):
             if newstart < 0:
                 newstart = 0
 
-            text = (text[:newstart] + text[matches.end():])
+            text = text[:newstart] + text[matches.end() :]
             matches = backrex.search(text.decode('utf-8'))
         return text
 
